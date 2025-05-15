@@ -69,17 +69,6 @@ class KH1ClientCommandProcessor(ClientCommandProcessor):
         else:
             self.output(self.ctx.game_communication_path)
 
-    def _cmd_communication_path(self):
-        """Opens a file browser to allow Linux users to manually set their %LOCALAPPDATA% path"""
-        directory = Utils.open_directory("Select %LOCALAPPDATA% dir", "~/.local/share/Steam/steamapps/compatdata/2552430/pfx/drive_c/users/steamuser/AppData/Local")
-        if directory:
-            directory += "/KH1FM"
-            if not os.path.exists(directory):
-                os.makedirs(directory)
-            self.ctx.game_communication_path = directory
-        else:
-            self.output(self.ctx.game_communication_path)
-
 class KH1Context(CommonContext):
     command_processor: int = KH1ClientCommandProcessor
     game = "Kingdom Hearts"
@@ -191,39 +180,62 @@ class KH1Context(CommonContext):
             if args["type"] == "ItemSend":
                 item = args["item"]
                 networkItem = NetworkItem(*item)
-                recieverID = args["receiving"]
+                receiverID = args["receiving"]
                 senderID = networkItem.player
                 locationID = networkItem.location
-                if recieverID == self.slot or senderID == self.slot:
-                    itemName = self.item_names.lookup_in_slot(networkItem.item, recieverID)[:20]
+                if receiverID == self.slot or senderID == self.slot:
+                    itemName = self.item_names.lookup_in_slot(networkItem.item, receiverID)[:20]
                     itemCategory = networkItem.flags
-                    recieverName = self.player_names[recieverID][:20]
+                    receiverName = self.player_names[receiverID][:20]
                     senderName = self.player_names[senderID][:20]
                     message = ""
-                    if recieverID == self.slot and recieverID != senderID: # Item received from someone else
+                    if receiverID == self.slot and receiverID != senderID: # Item received from someone else
                         message = "From " + senderName + "\n" + itemName
-                    elif senderID == self.slot and recieverID != senderID: # Item sent to someone else
-                        message = itemName + "\nTo " + recieverName
+                    elif senderID == self.slot and receiverID != senderID: # Item sent to someone else
+                        message = itemName + "\nTo " + receiverName
                     elif locationID in remote_location_ids: # Found a remote item
                         message = itemName
                     filename = "msg"
                     if message != "":
-                        if not os.path.exists(self.game_communication_path + "/" + filename):
-                            with open(os.path.join(self.game_communication_path, filename), 'w') as f:
-                                f.write(message)
-                                f.close()
-            if args["type"] == "ItemCheat":
-                item = args["item"]
-                networkItem = NetworkItem(*item)
-                recieverID = args["receiving"]
-                if recieverID == self.slot:
-                    itemName = self.item_names.lookup_in_slot(networkItem.item, recieverID)[:20]
-                    filename = "msg"
-                    message = "Recieved " + itemName + "\nfrom server"
-                    if not os.path.exists(self.game_communication_path + "/" + filename):
                         with open(os.path.join(self.game_communication_path, filename), 'w') as f:
                             f.write(message)
                             f.close()
+        if cmd in {"PrintJSON"} and "type" in args:
+            if args["type"] == "ItemSend":
+                item = args["item"]
+                networkItem = NetworkItem(*item)
+                receiverID = args["receiving"]
+                senderID = networkItem.player
+                locationID = networkItem.location
+                if receiverID == self.slot or senderID == self.slot:
+                    itemName = self.item_names.lookup_in_slot(networkItem.item, receiverID)[:20]
+                    itemCategory = networkItem.flags
+                    receiverName = self.player_names[receiverID][:20]
+                    senderName = self.player_names[senderID][:20]
+                    message = ""
+                    if receiverID == self.slot and receiverID != senderID: # Item received from someone else
+                        message = "From " + senderName + "\n" + itemName
+                    elif senderID == self.slot and receiverID != senderID: # Item sent to someone else
+                        message = itemName + "\nto " + receiverName
+
+                    elif locationID in remote_location_ids: # Found a remote item
+                        message = itemName
+                    filename = "msg"
+                    if message != "":
+                        with open(os.path.join(self.game_communication_path, filename), 'w') as f:
+                            f.write(message)
+                            f.close()
+            if args["type"] == "ItemCheat":
+                item = args["item"]
+                networkItem = NetworkItem(*item)
+                receiverID = args["receiving"]
+                if receiverID == self.slot:
+                    itemName = self.item_names.lookup_in_slot(networkItem.item, receiverID)[:20]
+                    filename = "msg"
+                    message = "Received " + itemName + "\nfrom server"
+                    with open(os.path.join(self.game_communication_path, filename), 'w') as f:
+                        f.write(message)
+                        f.close()
 
 
     def on_deathlink(self, data: dict[str, object]):
